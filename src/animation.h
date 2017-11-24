@@ -1,3 +1,23 @@
+#ifndef _ANIMATION_H_
+#define _ANIMATION_H_
+
+#include "shelf.h"
+
+class Animation {
+  public:
+    Animation(Shelf*);
+    void color_walk(int frame);
+
+  private:
+    int colors[6];
+    Shelf *shelf;
+    int number_of_shelves;
+    int leds_per_shelf;
+};
+
+#endif
+
+// OLD CODE - delete after reference use
 //
 //#include "shelf.h"
 //#include <Adafruit_NeoPixel.h>

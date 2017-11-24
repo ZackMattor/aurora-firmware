@@ -8,15 +8,16 @@
 
 Shelf::Shelf() {
   // Set class variables
-  number_of_shelves = 6;
+  number_of_shelves = 1;
   leds_per_shelf = 20;
 
+  shelves[0] = Adafruit_NeoPixel(leds_per_shelf, SHELF_1_PIN, NEO_GRBW + NEO_KHZ800);
   // Initialize pixels
-  shelves[0] = Adafruit_NeoPixel(leds_per_shelf, SHELF_0_PIN, NEO_GRBW + NEO_KHZ800);
-  shelves[1] = Adafruit_NeoPixel(leds_per_shelf, SHELF_1_PIN, NEO_GRBW + NEO_KHZ800);
-  shelves[2] = Adafruit_NeoPixel(leds_per_shelf, SHELF_2_PIN, NEO_GRBW + NEO_KHZ800);
-  shelves[3] = Adafruit_NeoPixel(leds_per_shelf, SHELF_3_PIN, NEO_GRBW + NEO_KHZ800);
-  shelves[4] = Adafruit_NeoPixel(leds_per_shelf, SHELF_4_PIN, NEO_GRBW + NEO_KHZ800);
+  //shelves[0] = Adafruit_NeoPixel(leds_per_shelf, SHELF_0_PIN, NEO_GRBW + NEO_KHZ800);
+  //shelves[1] = Adafruit_NeoPixel(leds_per_shelf, SHELF_1_PIN, NEO_GRBW + NEO_KHZ800);
+  //shelves[2] = Adafruit_NeoPixel(leds_per_shelf, SHELF_2_PIN, NEO_GRBW + NEO_KHZ800);
+  //shelves[3] = Adafruit_NeoPixel(leds_per_shelf, SHELF_3_PIN, NEO_GRBW + NEO_KHZ800);
+  //shelves[4] = Adafruit_NeoPixel(leds_per_shelf, SHELF_4_PIN, NEO_GRBW + NEO_KHZ800);
 
   for(int y = 0; y < number_of_shelves; y++) {
     shelves[y].begin();
@@ -44,4 +45,20 @@ void Shelf::render() {
   for(int y = 0; y < number_of_shelves; y++) {
     shelves[y].show();
   }
+}
+
+int Shelf::get_number_of_shelves() {
+  return number_of_shelves;
+}
+
+int Shelf::get_leds_per_shelf() {
+  return leds_per_shelf;
+}
+
+int Shelf::color(int r, int g, int b) {
+  return color(r,b,g,0);
+}
+
+int Shelf::color(int r, int g, int b, int w) {
+  return shelves[0].Color(r,b,g,w);
 }

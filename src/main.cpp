@@ -2,9 +2,10 @@
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-
 #include <Arduino.h>
+
 #include "shelf.h"
+#include "animation.h"
 
 const char* ssid     = "foobar";
 const char* password = "ApplesAreGoodForYou";
@@ -15,6 +16,7 @@ int last_frame=0;
 int frame_interval=50;
 
 Shelf *shelf;
+Animation *animation;
 
 void setup() {
   Serial.begin(115200);
@@ -58,8 +60,14 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   delay(100);
+  for(int x=0; x<5; x++) {
+    ArduinoOTA.handle();
+    delay(500);
+  }
+  delay(100);
 
   shelf = new Shelf();
+  animation = new Animation(shelf);
 }
 
 
@@ -67,13 +75,8 @@ void loop() {
   ArduinoOTA.handle();
 
   if(last_frame + frame_interval < time) {
-    for(int x=0; x<5; x++) {
-      for(int y=0; y<20; y++) {
-        shelf->set_pixel(1,1,0,0,0,100);
-      }
-    }
+    animation->color_walk(frame);
 
-    shelf->render();
     frame++;
     last_frame = time;
   }
