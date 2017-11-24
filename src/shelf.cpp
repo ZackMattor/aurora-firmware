@@ -20,6 +20,7 @@ Shelf::Shelf() {
   //shelves[4] = Adafruit_NeoPixel(leds_per_shelf, SHELF_4_PIN, NEO_GRBW + NEO_KHZ800);
 
   for(int y = 0; y < number_of_shelves; y++) {
+    Serial.print("Starting up a shelf LED strip\n");
     shelves[y].begin();
   }
 
@@ -33,11 +34,19 @@ void Shelf::clear() {
   }
 }
 
-void Shelf::set_pixel(short shelf_id, short pixel_id, int color) {
-  shelves[shelf_id].setPixelColor(pixel_id, color);
+void Shelf::set_pixel(int shelf_id, int pixel_id, int color) {
+  Serial.print(shelf_id);
+  Serial.print(" - ");
+  Serial.print(pixel_id);
+  Serial.print(" - ");
+  Serial.print(color);
+  Serial.print(" - ");
+  Serial.print((int)&shelves[0], HEX);
+  shelves[0].setPixelColor(pixel_id, color);
+  Serial.print(" - AFTER!!\n");
 }
 
-void Shelf::set_pixel(short shelf_id, short pixel_id, int r, int g, int b, int w) {
+void Shelf::set_pixel(int shelf_id, int pixel_id, int r, int g, int b, int w) {
   set_pixel(shelf_id, pixel_id, shelves[0].Color(r,g,b,w));
 }
 

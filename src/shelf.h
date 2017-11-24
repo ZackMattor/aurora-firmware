@@ -7,8 +7,8 @@ class Shelf {
   public:
     Shelf();
     void clear();
-    void set_pixel(short shelf_id, short pixel_id, int color);
-    void set_pixel(short shelf_id, short pixel_id, int r, int g, int b, int w);
+    void set_pixel(int shelf_id, int pixel_id, int color);
+    void set_pixel(int shelf_id, int pixel_id, int r, int g, int b, int w);
     void render();
     int get_number_of_shelves();
     int get_leds_per_shelf();
