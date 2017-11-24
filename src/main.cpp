@@ -14,6 +14,8 @@ int time=0;
 int last_frame=0;
 int frame_interval=50;
 
+Shelf *shelf;
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Booting");
@@ -57,8 +59,7 @@ void setup() {
 
   delay(100);
 
-  shelf_init();
-  shelf_clear_all();
+  shelf = new Shelf();
 }
 
 
@@ -66,7 +67,13 @@ void loop() {
   ArduinoOTA.handle();
 
   if(last_frame + frame_interval < time) {
-    white_swell(frame);
+    for(int x=0; x<5; x++) {
+      for(int y=0; y<20; y++) {
+        shelf->set_pixel(1,1,0,0,0,100);
+      }
+    }
+
+    shelf->render();
     frame++;
     last_frame = time;
   }
