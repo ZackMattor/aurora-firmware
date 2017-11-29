@@ -18,7 +18,7 @@ class Shelf {
   private:
     int number_of_shelves;
     int leds_per_shelf;
-    Adafruit_NeoPixel shelves[5];
+    Adafruit_NeoPixel *shelves[5];
 };
 
 #endif
