@@ -3,12 +3,18 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <Arduino.h>
+#include <PubSubClient.h>
 
 #include "shelf.h"
 #include "animation.h"
 
 const char* ssid     = "foobar";
 const char* password = "ApplesAreGoodForYou";
+
+const char* mqtt_server = "mqtt.zackmattor.com";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
 
 int frame = 0;
 int time=0;
@@ -17,6 +23,61 @@ int frame_interval=50;
 
 Shelf *shelf;
 Animation *animation;
+
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+
+  // Switch on the LED if an 1 was received as first character
+  int shelf_id = (int)payload[0] - 48;
+
+  for(int i=0; i<20; i++) {
+    if((char)payload[1] == '0') {
+      shelf->set_pixel(shelf_id,i,0,0,0,0);
+    } else {
+      shelf->set_pixel(shelf_id,i,0,0,0,255);
+    }
+  }
+
+  shelf->render();
+}
+
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP8266Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str(), "zmattor", "AsXm66jtsaGxFHCsq7hEa")) {
+      Serial.println("connected");
+      // Once connected, publish an announcement...
+      client.publish("outTopic", "hello world");
+      // ... and resubscribe
+      client.subscribe("inTopic");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(1000);
+      ArduinoOTA.handle();
+      delay(1000);
+      ArduinoOTA.handle();
+      delay(1000);
+      ArduinoOTA.handle();
+    }
+  }
+}
+
 
 void setup() {
   Serial.begin(115200);
@@ -61,17 +122,25 @@ void setup() {
 
   shelf = new Shelf();
   animation = new Animation(shelf);
+
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
 }
 
 void loop() {
   ArduinoOTA.handle();
 
-  if(last_frame + frame_interval < time) {
-    animation->color_walk(frame);
-
-    frame++;
-    last_frame = time;
+  if (!client.connected()) {
+    reconnect();
   }
 
-  time = millis();
+  client.loop();
+  //if(last_frame + frame_interval < time) {
+  //  animation->color_walk(frame);
+
+  //  frame++;
+  //  last_frame = time;
+  //}
+
+  //time = millis();
 }
