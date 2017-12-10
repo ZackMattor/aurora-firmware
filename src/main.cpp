@@ -26,28 +26,21 @@ Animation *animation;
 
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
   Serial.print(topic);
-  Serial.print("] ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
+  int shelf_id;
+  int row_id;
 
-  // Switch on the LED if an 1 was received as first character
-  int shelf_id = (int)payload[0] - 48;
+  if(strcmp(topic, "ff") == 0 && length%3 == 0) {
+    for(int i = 0; i < length; i+=3) {
+      shelf_id = i/60;
+      row_id = (i/3)%20;
 
-  for(int i=0; i<20; i++) {
-    if((char)payload[1] == '0') {
-      shelf->set_pixel(shelf_id,i,0,0,0,0);
-    } else {
-      shelf->set_pixel(shelf_id,i,0,0,0,255);
+      shelf->set_pixel(shelf_id, row_id, payload[i], payload[i+1], payload[i+2], 0);
     }
+
+    shelf->render();
   }
-
-  shelf->render();
 }
-
 
 void reconnect() {
   // Loop until we're reconnected
@@ -57,12 +50,12 @@ void reconnect() {
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str(), "zmattor", "AsXm66jtsaGxFHCsq7hEa")) {
+    if (client.connect(clientId.c_str())) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("outTopic", "hello world");
       // ... and resubscribe
-      client.subscribe("inTopic");
+      client.subscribe("ff");
+      client.publish("outTopic", "after sub");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
