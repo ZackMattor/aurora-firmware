@@ -1,139 +1,117 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
-#include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
+#include <WiFiManager.h>
 #include <PubSubClient.h>
+#include "SPIFFS.h"
 
-#include "shelf.h"
-#include "animation.h"
-
-const char* ssid     = "foobar";
-const char* password = "ApplesAreGoodForYou";
-
-const char* mqtt_server = "mqtt.zackmattor.com";
-
-WiFiClient espClient;
-PubSubClient client(espClient);
-
-int frame = 0;
-int time=0;
-int last_frame=0;
-int frame_interval=50;
-
-Shelf *shelf;
-Animation *animation;
-
-
-void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print(topic);
-  int shelf_id;
-  int row_id;
-
-  if(strcmp(topic, "ff") == 0 && length%3 == 0) {
-    for(int i = 0; i < length; i+=3) {
-      shelf_id = i/60;
-      row_id = (i/3)%20;
-
-      shelf->set_pixel(shelf_id, row_id, payload[i], payload[i+1], payload[i+2], 0);
-    }
-
-    shelf->render();
-  }
-}
-
-void reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Create a random client ID
-    String clientId = "ESP8266Client-";
-    clientId += String(random(0xffff), HEX);
-    // Attempt to connect
-    if (client.connect(clientId.c_str())) {
-      Serial.println("connected");
-      // Once connected, publish an announcement...
-      // ... and resubscribe
-      client.subscribe("ff");
-      client.publish("outTopic", "after sub");
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(1000);
-      ArduinoOTA.handle();
-      delay(1000);
-      ArduinoOTA.handle();
-      delay(1000);
-      ArduinoOTA.handle();
-    }
-  }
-}
-
+Adafruit_NeoPixel *led_strip;
+String mqtt_server;
+String id_str;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Booting");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFiManager wm;
+  bool res;
 
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
-    delay(5000);
-    ESP.restart();
+  if(!SPIFFS.begin(true)){
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
   }
 
-  ArduinoOTA.onStart([]() {
-      String type;
-      if (ArduinoOTA.getCommand() == U_FLASH)
-      type = "sketch";
-      else // U_SPIFFS
-      type = "filesystem";
+  if(!SPIFFS.exists("/config/mqtt.txt")) Serial.println("There is no valid mqtt config");
+  if(!SPIFFS.exists("/config/id.txt")) Serial.println("There is no valid id config");
 
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
-      });
-  ArduinoOTA.onEnd([]() {
-      Serial.println("\nEnd");
-      });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-      });
-  ArduinoOTA.onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
-      });
-  ArduinoOTA.begin();
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  File id_file = SPIFFS.open("/config/id.txt");
+  File mqtt_file = SPIFFS.open("/config/mqtt.txt");
 
-  shelf = new Shelf();
-  animation = new Animation(shelf);
+  Serial.write("ID Value:");
+  id_str = id_file.readStringUntil('\n');
+  Serial.println(id_str.c_str());
 
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
+  Serial.write("MQTT Value:");
+  mqtt_server = mqtt_file.readStringUntil('\n');
+  Serial.println(mqtt_server.c_str());
+
+  //File file = SPIFFS.open("/test.txt", FILE_WRITE);
+
+  //if(!file) {
+  //  Serial.println("There was an error opening the file for writing");
+  //  return;
+  //}
+
+  //if(file.print("TEST")) {
+  //  Serial.println("File was written");;
+  //} else {
+  //  Serial.println("File write failed");
+  //}
+
+  //file.close();
+  //
+
+  //File file2 = SPIFFS.open("/test.txt");
+
+  //if(!file2) {
+  //  Serial.println("Failed to open file for reading");
+  //  return;
+  //}
+
+  //Serial.println("File Content:");
+
+  //while(file2.available()){
+  //  Serial.write(file2.read());
+  //}
+
+  //file2.close();
+
+  WiFiManagerParameter custom_mqtt_server("mqtt_server", "mqtt server", "", 40);
+  wm.addParameter(&custom_mqtt_server);
+  res = wm.autoConnect("Aurora", "ConfigAurora"); 
+
+
+  if(!res) {
+    Serial.println("Failed to connect");
+    ESP.restart();
+    delay(5000);
+  } else {
+    Serial.println("connected...yeey :)");
+    led_strip = new Adafruit_NeoPixel((int)8, (int)5, NEO_GRBW + NEO_KHZ800);
+    led_strip->begin();
+    led_strip->clear();
+  }
+}
+
+void wipe_data() {
+  WiFi.disconnect();
+  delay(1000);
+
+  // https://github.com/espressif/arduino-esp32/issues/400
+  WiFi.begin("0","0");
+
+  ESP.restart();
+  delay(4000);
 }
 
 void loop() {
-  ArduinoOTA.handle();
+  // PROVISION
+  // launch the AP mode to configure the device
+  // if we can contact the server, we can skip
+  // the provisioning step
+  //
+  // ACTIVATE
+  //
+  //
+  // LED animation loop
+  wipe_data();
+  int color = led_strip->Color(0, 0, 20, 0);
 
-  if (!client.connected()) {
-    reconnect();
-  }
+  led_strip->setPixelColor((int)0, color);
+  led_strip->setPixelColor((int)1, color);
+  led_strip->setPixelColor((int)2, color);
+  led_strip->setPixelColor((int)3, color);
+  led_strip->setPixelColor((int)4, color);
+  led_strip->setPixelColor((int)5, color);
+  led_strip->setPixelColor((int)6, color);
+  led_strip->setPixelColor((int)7, color);
+  led_strip->show();
 
-  client.loop();
-  //if(last_frame + frame_interval < time) {
-  //  animation->color_walk(frame);
-
-  //  frame++;
-  //  last_frame = time;
-  //}
-
-  //time = millis();
+  delay(1000);
 }
