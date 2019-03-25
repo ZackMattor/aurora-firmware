@@ -1,7 +1,9 @@
+#include "SPIFFS.h"
+
 #include <Adafruit_NeoPixel.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
-#include "SPIFFS.h"
+#include "device_config.h"
 
 Adafruit_NeoPixel *led_strip;
 String mqtt_server;
@@ -9,63 +11,28 @@ String id_str;
 
 void setup() {
   Serial.begin(115200);
-  WiFiManager wm;
   bool res;
 
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    return;
-  }
+  device_config_init();
 
-  if(!SPIFFS.exists("/config/mqtt.txt")) Serial.println("There is no valid mqtt config");
-  if(!SPIFFS.exists("/config/id.txt")) Serial.println("There is no valid id config");
+  WiFiManager wm;
 
-  File id_file = SPIFFS.open("/config/id.txt");
-  File mqtt_file = SPIFFS.open("/config/mqtt.txt");
+  // Custom WiFiManager parameters
+  WiFiManagerParameter param_mqtt_server("mqtt_server", "mqtt server", "", 128);
+  WiFiManagerParameter param_mqtt_port("mqtt_port", "mqtt port", "1883", 8);
+  WiFiManagerParameter param_device_token("device_token", "Device Token", "", 16);
+  WiFiManagerParameter param_device_width("device_width", "LED Columns", "", 4);
+  WiFiManagerParameter param_device_height("device_height", "LED Rows", "", 4);
 
-  Serial.write("ID Value:");
-  id_str = id_file.readStringUntil('\n');
-  Serial.println(id_str.c_str());
+  // Regester the custom parameters with WiFiManager
+  wm.addParameter(&param_mqtt_server);
+  wm.addParameter(&param_mqtt_port);
+  wm.addParameter(&param_device_token);
+  wm.addParameter(&param_device_width);
+  wm.addParameter(&param_device_height);
 
-  Serial.write("MQTT Value:");
-  mqtt_server = mqtt_file.readStringUntil('\n');
-  Serial.println(mqtt_server.c_str());
-
-  //File file = SPIFFS.open("/test.txt", FILE_WRITE);
-
-  //if(!file) {
-  //  Serial.println("There was an error opening the file for writing");
-  //  return;
-  //}
-
-  //if(file.print("TEST")) {
-  //  Serial.println("File was written");;
-  //} else {
-  //  Serial.println("File write failed");
-  //}
-
-  //file.close();
-  //
-
-  //File file2 = SPIFFS.open("/test.txt");
-
-  //if(!file2) {
-  //  Serial.println("Failed to open file for reading");
-  //  return;
-  //}
-
-  //Serial.println("File Content:");
-
-  //while(file2.available()){
-  //  Serial.write(file2.read());
-  //}
-
-  //file2.close();
-
-  WiFiManagerParameter custom_mqtt_server("mqtt_server", "mqtt server", "", 40);
-  wm.addParameter(&custom_mqtt_server);
+  // Start the WiFi Manager workflow
   res = wm.autoConnect("Aurora", "ConfigAurora"); 
-
 
   if(!res) {
     Serial.println("Failed to connect");
