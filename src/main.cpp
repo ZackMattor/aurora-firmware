@@ -17,7 +17,6 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 int frame = 0;
-int time=0;
 int last_frame=0;
 int frame_interval=50;
 
@@ -128,12 +127,4 @@ void loop() {
   }
 
   client.loop();
-  //if(last_frame + frame_interval < time) {
-  //  animation->color_walk(frame);
-
-  //  frame++;
-  //  last_frame = time;
-  //}
-
-  //time = millis();
 }
