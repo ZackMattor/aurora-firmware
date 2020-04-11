@@ -1,0 +1,6 @@
+IP_ADDRESS=192.168.1.5
+SERIAL_DEV=/dev/ttyUSB2
+CLIENT_SSID=foobar
+CLIENT_PASSPHRASE=bazztazz
+MQTT_SERVER=mqtt.example.com
+OTA_PASSWORD=my_secret_password

@@ -8,21 +8,17 @@
 #include "shelf.h"
 #include "animation.h"
 
-const char* ssid     = "foobar";
-const char* password = "ApplesAreGoodForYou";
-
-const char* mqtt_server = "mqtt.zackmattor.com";
+const char* ssid        = CLIENT_SSID;
+const char* password    = CLIENT_PASSPHRASE;
+const char* mqtt_server = MQTT_SERVER;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 int frame = 0;
-int last_frame=0;
-int frame_interval=50;
 
 Shelf *shelf;
 Animation *animation;
-
 
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print(topic);
@@ -83,6 +79,7 @@ void setup() {
     ESP.restart();
   }
 
+  ArduinoOTA.setPassword(OTA_PASSWORD);
   ArduinoOTA.onStart([]() {
       String type;
       if (ArduinoOTA.getCommand() == U_FLASH)
@@ -122,9 +119,17 @@ void setup() {
 void loop() {
   ArduinoOTA.handle();
 
+  if( frame % 100000 == 0) {
+    Serial.print("FRAME: ");
+    Serial.print(frame);
+    Serial.print(" | IP: ");
+    Serial.println(WiFi.localIP());
+  }
+
   if (!client.connected()) {
     reconnect();
   }
 
   client.loop();
+  frame++;
 }
