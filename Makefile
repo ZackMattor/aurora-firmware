@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 include variables.mk
 
-BUILD_FLAGS="-D'OTA_PASSWORD=\"$(OTA_PASSWORD)\"' -D'CLIENT_PASSPHRASE=\"$(CLIENT_PASSPHRASE)\"' -D'CLIENT_SSID=\"$(CLIENT_SSID)\"' -D'MQTT_SERVER=\"$(MQTT_SERVER)\"'" 
+BUILD_FLAGS="-D'OTA_PASSWORD=\"$(OTA_PASSWORD)\"'"
 UPLOAD_FLAGS="-a'$(OTA_PASSWORD)'"
 
 debian-install-dependencies:
