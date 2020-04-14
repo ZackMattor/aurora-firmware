@@ -1,11 +1,13 @@
 #include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
+//#include <ESP8266mDNS.h>
+//#include <WiFiUdp.h>
+//#include <WiFi.h>
 #include <Arduino.h>
 #include <PubSubClient.h>
-
+#include <Adafruit_NeoPixel.h>
+#include "QList.h"
 #include "config.h"
+#include "ota_update.h"
 //#include "shelf.h"
 //#include "animation.h"
 
@@ -15,28 +17,40 @@ const char* mqtt_server = MQTT_SERVER;
 const String geometry = "icosahedron";
 String device_id;
 
+Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PIN, NEO_GRBW + NEO_KHZ800);
+
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
 
-int frame = 0;
+QList<byte *> frame_buffer;
+unsigned int frame_count = 0;
+unsigned long current_time = 0;
+
+// hacky clock variables
+unsigned long telemetry_interval = 5000;
+unsigned long next_telemetry_time = telemetry_interval;
+
+unsigned long framereport_interval = 1000;
+unsigned long next_framereport_time = framereport_interval;
+
+unsigned long rendertik_interval = 1000 / 25;
+unsigned long next_rendertik_time = rendertik_interval;
+
 
 //Shelf *shelf;
 //Animation *animation;
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print(topic);
-  int shelf_id;
-  int row_id;
-
-  if(strcmp(topic, "ff") == 0 && length%3 == 0) {
-    for(int i = 0; i < length; i+=3) {
-      shelf_id = i/60;
-      row_id = (i/3)%20;
-
-      //shelf->set_pixel(shelf_id, row_id, payload[i], payload[i+1], payload[i+2], 0);
+  //Serial.print("Recieved message on `");
+  //Serial.print(topic);
+  //Serial.println("`");
+  //int row_id;
+  if(strcmp(topic, (device_id + "_ff").c_str()) == 0 && length%3 == 0) {
+    frame_count++;
+    if(frame_buffer.size() < 500) {
+      frame_buffer.push_back(payload);
+      Serial.println(frame_buffer.size());
     }
-
-    //shelf->render();
   }
 }
 
@@ -87,50 +101,22 @@ void setup() {
   device_id = String(WiFi.macAddress());
   WiFi.begin(ssid, password);
 
+  ota_setup();
+
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
     delay(5000);
     ESP.restart();
   }
 
-  ArduinoOTA.setPassword(OTA_PASSWORD);
-
-  ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH)
-    type = "sketch";
-    else // U_SPIFFS
-    type = "filesystem";
-
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Serial.println("Start updating " + type);
-  });
-
-  ArduinoOTA.onEnd([]() {
-      Serial.println("\nEnd");
-    });
-
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-
-  ArduinoOTA.begin();
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
   //shelf = new Shelf();
   //animation = new Animation(shelf);
+  led_strip->begin();
+  led_strip->show(); // Initialize all pixels to 'off'
 
   mqtt_client.setServer(mqtt_server, 1883);
   mqtt_client.setCallback(callback);
@@ -138,19 +124,52 @@ void setup() {
 
 void loop() {
   ArduinoOTA.handle();
-
-  if( frame % 100000 == 0) {
-    sendTelemetry();
-    Serial.print("FRAME: ");
-    Serial.print(frame);
-    Serial.print(" | IP: ");
-    Serial.println(WiFi.localIP());
-  }
+  current_time = millis();
 
   if (!mqtt_client.connected()) {
     reconnect();
   }
 
   mqtt_client.loop();
-  frame++;
+
+  // Clock for the render tik
+  if(current_time > next_rendertik_time && frame_buffer.size() > 80) {
+    next_rendertik_time = current_time + rendertik_interval;
+
+    unsigned int length = GEOMETRY_WIDTH * 3;
+
+    byte *payload = frame_buffer.back();
+    frame_buffer.pop_back();
+    unsigned int led_id;
+
+    for(int i = 0; i < length; i+=3) {
+      led_id = i/3;
+      //row_id = (i/3)%20;
+
+      led_strip->setPixelColor(led_id, led_strip->Color(payload[i], payload[i+1], payload[i+2], 0));
+    }
+
+    led_strip->show();
+  }
+
+  // Clock for the frame repot
+  if(current_time > next_framereport_time) {
+    next_framereport_time = current_time + framereport_interval;
+
+    //Serial.println(frame_count);
+    frame_count = 0;
+  }
+
+  // Clock for the telemetry sender
+  if(current_time > next_telemetry_time) {
+    next_telemetry_time = current_time + telemetry_interval;
+
+    //Serial.print(String("Sending telemetry...") + millis() + " | ");
+    sendTelemetry();
+    //Serial.println(millis());
+    //Serial.print("DEVICE ID: ");
+    //Serial.print(device_id);
+    //Serial.print(" | IP: ");
+    //Serial.println(WiFi.localIP());
+  }
 }
