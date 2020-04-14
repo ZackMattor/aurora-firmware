@@ -8,8 +8,6 @@
 #include "QList.h"
 #include "config.h"
 #include "ota_update.h"
-//#include "shelf.h"
-//#include "animation.h"
 
 const char* ssid        = CLIENT_SSID;
 const char* password    = CLIENT_PASSPHRASE;
@@ -26,30 +24,23 @@ QList<byte *> frame_buffer;
 unsigned int frame_count = 0;
 unsigned long current_time = 0;
 
-// hacky clock variables
+// hacky clock system variables
 unsigned long telemetry_interval = 5000;
 unsigned long next_telemetry_time = telemetry_interval;
 
 unsigned long framereport_interval = 1000;
 unsigned long next_framereport_time = framereport_interval;
 
-unsigned long rendertik_interval = 1000 / 25;
+unsigned long rendertik_interval = 1000 / 40;
 unsigned long next_rendertik_time = rendertik_interval;
 
-
-//Shelf *shelf;
-//Animation *animation;
-
 void callback(char* topic, byte* payload, unsigned int length) {
-  //Serial.print("Recieved message on `");
-  //Serial.print(topic);
-  //Serial.println("`");
-  //int row_id;
   if(strcmp(topic, (device_id + "_ff").c_str()) == 0 && length%3 == 0) {
     frame_count++;
     if(frame_buffer.size() < 500) {
-      frame_buffer.push_back(payload);
-      Serial.println(frame_buffer.size());
+      byte *cpy = (byte *)malloc(length+1);
+      memcpy(cpy, payload, length);
+      frame_buffer.push_back(cpy);
     }
   }
 }
@@ -113,8 +104,6 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  //shelf = new Shelf();
-  //animation = new Animation(shelf);
   led_strip->begin();
   led_strip->show(); // Initialize all pixels to 'off'
 
@@ -138,8 +127,8 @@ void loop() {
 
     unsigned int length = GEOMETRY_WIDTH * 3;
 
-    byte *payload = frame_buffer.back();
-    frame_buffer.pop_back();
+    byte *payload = frame_buffer.front();
+    frame_buffer.pop_front();
     unsigned int led_id;
 
     for(int i = 0; i < length; i+=3) {
@@ -149,12 +138,16 @@ void loop() {
       led_strip->setPixelColor(led_id, led_strip->Color(payload[i], payload[i+1], payload[i+2], 0));
     }
 
+    free(payload);
     led_strip->show();
   }
 
   // Clock for the frame repot
   if(current_time > next_framereport_time) {
     next_framereport_time = current_time + framereport_interval;
+
+    Serial.print("Frame Buffer Size - ");
+    Serial.println(frame_buffer.size());
 
     //Serial.println(frame_count);
     frame_count = 0;
