@@ -7,6 +7,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "QList.h"
 #include "config.h"
+#include "geometry/icosahedron.h"
 #include "ota_update.h"
 
 const char* ssid        = CLIENT_SSID;
@@ -135,7 +136,7 @@ void loop() {
       led_id = i/3;
       //row_id = (i/3)%20;
 
-      led_strip->setPixelColor(led_id, led_strip->Color(payload[i], payload[i+1], payload[i+2], 0));
+      led_strip->setPixelColor(icosahedron_hardware_map[led_id], led_strip->Color(payload[i], payload[i+1], payload[i+2], 0));
     }
 
     free(payload);

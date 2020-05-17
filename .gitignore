@@ -2,4 +2,4 @@
 .piolibdeps
 .pio
 src/config.h
-src/variables.mk
+variables.mk
