@@ -48,12 +48,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 void sendTelemetry() {
   if(mqtt_client.connected()) {
+    const String metrics_payload =
+      String("{") +
+        "\"alive\":1," +
+        "\"frame_buffer_size\":" + frame_buffer.size() + "," +
+        "\"free_heap\":" + ESP.getFreeHeap() +
+      "}";
     const String telemetry_payload =
       String("{") +
         "\"device_id\":\"" + device_id + "\"," +
         "\"geometry\":\"" + geometry + "\"" +
       "}";
+
     mqtt_client.publish("device_telemetry", telemetry_payload.c_str());
+    mqtt_client.publish("aurora_metrics/icosahedron", metrics_payload.c_str());
   }
 }
 
@@ -115,6 +123,28 @@ void setup() {
 void loop() {
   ArduinoOTA.handle();
   current_time = millis();
+
+  // LED Test
+  // place outside of main loop
+  // int i = 0;
+  //if(current_time % 1000 == 0) {
+  //  for(int x=0; x<20; x++) {
+  //    led_strip->setPixelColor(x, led_strip->Color(0,0,0, 0));
+  //  }
+
+  //  led_strip->setPixelColor(icosahedron_hardware_map[0], led_strip->Color(255,0,0, 0));
+  //  led_strip->setPixelColor(icosahedron_hardware_map[1], led_strip->Color(0,255,0, 0));
+  //  led_strip->setPixelColor(icosahedron_hardware_map[2], led_strip->Color(0,0,255, 0));
+  //  led_strip->setPixelColor(icosahedron_hardware_map[3], led_strip->Color(255,0,255, 0));
+  //  led_strip->setPixelColor(icosahedron_hardware_map[4], led_strip->Color(0,255,255, 0));
+  //  led_strip->setPixelColor(icosahedron_hardware_map[5], led_strip->Color(255,255,0, 0));
+  //  led_strip->setPixelColor(icosahedron_hardware_map[6], led_strip->Color(255,255,255, 0));
+
+  //  led_strip->show();
+
+  //  i++;
+  //  if(i == 20) i = 0;
+  //}
 
   if (!mqtt_client.connected()) {
     reconnect();
