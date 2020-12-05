@@ -21,7 +21,9 @@ Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PI
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
 
-QList<byte *> frame_buffer;
+const unsigned int FRAME_BUFFER_SIZE = GEOMETRY_WIDTH * 3;
+byte frame_buffer[FRAME_BUFFER_SIZE];
+
 unsigned int frame_count = 0;
 unsigned long current_time = 0;
 
@@ -38,11 +40,7 @@ unsigned long next_rendertik_time = rendertik_interval;
 void callback(char* topic, byte* payload, unsigned int length) {
   if(strcmp(topic, (device_id + "_ff").c_str()) == 0 && length%3 == 0) {
     frame_count++;
-    if(frame_buffer.size() < 500) {
-      byte *cpy = (byte *)malloc(length+1);
-      memcpy(cpy, payload, length);
-      frame_buffer.push_back(cpy);
-    }
+    memcpy(frame_buffer, payload, FRAME_BUFFER_SIZE);
   }
 }
 
@@ -51,7 +49,6 @@ void sendTelemetry() {
     const String metrics_payload =
       String("{") +
         "\"alive\":1," +
-        "\"frame_buffer_size\":" + frame_buffer.size() + "," +
         "\"free_heap\":" + ESP.getFreeHeap() +
       "}";
     const String telemetry_payload =
@@ -153,33 +150,26 @@ void loop() {
   mqtt_client.loop();
 
   // Clock for the render tik
-  if(current_time > next_rendertik_time && frame_buffer.size() > 80) {
+  if(current_time > next_rendertik_time) {
     next_rendertik_time = current_time + rendertik_interval;
 
-    unsigned int length = GEOMETRY_WIDTH * 3;
-
-    byte *payload = frame_buffer.front();
-    frame_buffer.pop_front();
     unsigned int led_id;
 
-    for(int i = 0; i < length; i+=3) {
+    for(int i = 0; i < FRAME_BUFFER_SIZE; i+=3) {
       led_id = i/3;
       //row_id = (i/3)%20;
 
-      led_strip->setPixelColor(icosahedron_hardware_map[led_id], led_strip->Color(payload[i], payload[i+1], payload[i+2], 0));
+      led_strip->setPixelColor(icosahedron_hardware_map[led_id], led_strip->Color(frame_buffer[i], frame_buffer[i+1], frame_buffer[i+2], 0));
     }
 
-    free(payload);
     led_strip->show();
   }
 
-  // Clock for the frame repot
+  // Clock for the frame report
   if(current_time > next_framereport_time) {
     next_framereport_time = current_time + framereport_interval;
 
-    Serial.print("Frame Buffer Size - ");
-    Serial.println(frame_buffer.size());
-
+    Serial.print("Frame count since last report - ");
     //Serial.println(frame_count);
     frame_count = 0;
   }
