@@ -10,36 +10,41 @@
 #include "geometry/icosahedron.h"
 #include "ota_update.h"
 
+// WiFi/Network Settings
 const char* ssid        = CLIENT_SSID;
 const char* password    = CLIENT_PASSPHRASE;
 const char* mqtt_server = MQTT_SERVER;
-const String geometry = "icosahedron";
-String device_id;
-
-Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PIN, NEO_GRBW + NEO_KHZ800);
-
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
+
+// Aurora/LED Variables
+String device_id;
+const String geometry = "icosahedron";
+Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PIN, NEO_GRBW + NEO_KHZ800);
 
 const unsigned int FRAME_BUFFER_SIZE = GEOMETRY_WIDTH * 3;
 byte frame_buffer[FRAME_BUFFER_SIZE];
 
-unsigned int frame_count = 0;
+unsigned long loop_count = 0;
 unsigned long current_time = 0;
 
 // hacky clock system variables
 unsigned long telemetry_interval = 5000;
 unsigned long next_telemetry_time = telemetry_interval;
 
-unsigned long framereport_interval = 1000;
-unsigned long next_framereport_time = framereport_interval;
-
 unsigned long rendertik_interval = 1000 / 40;
 unsigned long next_rendertik_time = rendertik_interval;
 
+void clear(unsigned long h, short int s, short int v) {
+  for(int x=0; x<20; x++) {
+    led_strip->setPixelColor(icosahedron_hardware_map[x], led_strip->ColorHSV(h,s,v));
+  }
+
+  led_strip->show();
+}
+
 void callback(char* topic, byte* payload, unsigned int length) {
   if(strcmp(topic, (device_id + "_ff").c_str()) == 0 && length%3 == 0) {
-    frame_count++;
     memcpy(frame_buffer, payload, FRAME_BUFFER_SIZE);
   }
 }
@@ -63,31 +68,20 @@ void sendTelemetry() {
 }
 
 void reconnect() {
-  // Loop until we're reconnected
-  while(!mqtt_client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Create a random client ID
-    String clientId = "AuroraDevice-";
-    clientId += device_id;
+  Serial.print("Attempting MQTT connection...");
+  // Create a random client ID
+  String clientId = "AuroraDevice-";
+  clientId += device_id;
 
-    // Attempt to connect
-    if (mqtt_client.connect(clientId.c_str())) {
-      Serial.println("connected");
+  // Attempt to connect
+  if (mqtt_client.connect(clientId.c_str())) {
+    Serial.println("connected");
 
-      mqtt_client.subscribe((device_id + "_ff").c_str());
-      sendTelemetry();
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(mqtt_client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(1000);
-      ArduinoOTA.handle();
-      delay(1000);
-      ArduinoOTA.handle();
-      delay(1000);
-      ArduinoOTA.handle();
-    }
+    mqtt_client.subscribe((device_id + "_ff").c_str());
+    sendTelemetry();
+  } else {
+    Serial.print("failed, rc=");
+    Serial.print(mqtt_client.state());
   }
 }
 
@@ -121,69 +115,24 @@ void loop() {
   ArduinoOTA.handle();
   current_time = millis();
 
-  // LED Test
-  // place outside of main loop
-  // int i = 0;
-  //if(current_time % 1000 == 0) {
-  //  for(int x=0; x<20; x++) {
-  //    led_strip->setPixelColor(x, led_strip->Color(0,0,0, 0));
-  //  }
-
-  //  led_strip->setPixelColor(icosahedron_hardware_map[0], led_strip->Color(255,0,0, 0));
-  //  led_strip->setPixelColor(icosahedron_hardware_map[1], led_strip->Color(0,255,0, 0));
-  //  led_strip->setPixelColor(icosahedron_hardware_map[2], led_strip->Color(0,0,255, 0));
-  //  led_strip->setPixelColor(icosahedron_hardware_map[3], led_strip->Color(255,0,255, 0));
-  //  led_strip->setPixelColor(icosahedron_hardware_map[4], led_strip->Color(0,255,255, 0));
-  //  led_strip->setPixelColor(icosahedron_hardware_map[5], led_strip->Color(255,255,0, 0));
-  //  led_strip->setPixelColor(icosahedron_hardware_map[6], led_strip->Color(255,255,255, 0));
-
-  //  led_strip->show();
-
-  //  i++;
-  //  if(i == 20) i = 0;
-  //}
-
   if (!mqtt_client.connected()) {
     reconnect();
   }
-
   mqtt_client.loop();
 
   // Clock for the render tik
   if(current_time > next_rendertik_time) {
     next_rendertik_time = current_time + rendertik_interval;
 
-    unsigned int led_id;
-
-    for(int i = 0; i < FRAME_BUFFER_SIZE; i+=3) {
-      led_id = i/3;
-      //row_id = (i/3)%20;
-
-      led_strip->setPixelColor(icosahedron_hardware_map[led_id], led_strip->Color(frame_buffer[i], frame_buffer[i+1], frame_buffer[i+2], 0));
-    }
+    clear(loop_count,255,255);
 
     led_strip->show();
-  }
-
-  // Clock for the frame report
-  if(current_time > next_framereport_time) {
-    next_framereport_time = current_time + framereport_interval;
-
-    Serial.print("Frame count since last report - ");
-    //Serial.println(frame_count);
-    frame_count = 0;
   }
 
   // Clock for the telemetry sender
   if(current_time > next_telemetry_time) {
     next_telemetry_time = current_time + telemetry_interval;
-
-    //Serial.print(String("Sending telemetry...") + millis() + " | ");
     sendTelemetry();
-    //Serial.println(millis());
-    //Serial.print("DEVICE ID: ");
-    //Serial.print(device_id);
-    //Serial.print(" | IP: ");
-    //Serial.println(WiFi.localIP());
   }
+  loop_count++;
 }
