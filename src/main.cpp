@@ -14,8 +14,7 @@
 const char* ssid        = CLIENT_SSID;
 const char* password    = CLIENT_PASSPHRASE;
 const char* mqtt_server = MQTT_SERVER;
-WiFiClient espClient;
-PubSubClient mqtt_client(espClient);
+WiFiClient serverClient;
 
 // Aurora/LED Variables
 String device_id;
@@ -50,39 +49,47 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void sendTelemetry() {
-  if(mqtt_client.connected()) {
-    const String metrics_payload =
-      String("{") +
-        "\"alive\":1," +
-        "\"free_heap\":" + ESP.getFreeHeap() +
-      "}";
-    const String telemetry_payload =
-      String("{") +
-        "\"device_id\":\"" + device_id + "\"," +
-        "\"geometry\":\"" + geometry + "\"" +
-      "}";
+  //if(mqtt_client.connected()) {
+  //  const String metrics_payload =
+  //    String("{") +
+  //      "\"alive\":1," +
+  //      "\"free_heap\":" + ESP.getFreeHeap() +
+  //    "}";
+  //  const String telemetry_payload =
+  //    String("{") +
+  //      "\"device_id\":\"" + device_id + "\"," +
+  //      "\"geometry\":\"" + geometry + "\"" +
+  //    "}";
 
-    mqtt_client.publish("device_telemetry", telemetry_payload.c_str());
-    mqtt_client.publish("aurora_metrics/icosahedron", metrics_payload.c_str());
-  }
+  //  mqtt_client.publish("device_telemetry", telemetry_payload.c_str());
+  //  mqtt_client.publish("aurora_metrics/icosahedron", metrics_payload.c_str());
+  //}
 }
 
 void reconnect() {
-  Serial.print("Attempting MQTT connection...");
+  Serial.print("Attempting home hub connection...");
   // Create a random client ID
   String clientId = "AuroraDevice-";
   clientId += device_id;
 
-  // Attempt to connect
-  if (mqtt_client.connect(clientId.c_str())) {
-    Serial.println("connected");
+  if (!serverClient.connect(mqtt_server, 1337)) {
+    Serial.println("Connection to host failed");
 
-    mqtt_client.subscribe((device_id + "_ff").c_str());
-    sendTelemetry();
-  } else {
-    Serial.print("failed, rc=");
-    Serial.print(mqtt_client.state());
+    delay(1000);
+    return;
   }
+  Serial.println("Connection to server worked! POG");
+
+  // Attempt to connect
+  //if (mqtt_client.connect(clientId.c_str())) {
+  //  Serial.println("connected");
+
+  //  mqtt_client.subscribe((device_id + "_ff").c_str());
+  //  sendTelemetry();
+  //} else {
+  //  Serial.print("failed, rc=");
+  //  Serial.print(mqtt_client.state());
+  //}
 }
 
 void setup() {
@@ -107,18 +114,18 @@ void setup() {
   led_strip->begin();
   led_strip->show(); // Initialize all pixels to 'off'
 
-  mqtt_client.setServer(mqtt_server, 1883);
-  mqtt_client.setCallback(callback);
+  //mqtt_client.setServer(mqtt_server, 1883);
+  //mqtt_client.setCallback(callback);
 }
 
 void loop() {
   ArduinoOTA.handle();
   current_time = millis();
 
-  if (!mqtt_client.connected()) {
-    reconnect();
-  }
-  mqtt_client.loop();
+  //if (!mqtt_client.connected()) {
+  //  reconnect();
+  //}
+  //mqtt_client.loop();
 
   // Clock for the render tik
   if(current_time > next_rendertik_time) {
