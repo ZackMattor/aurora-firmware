@@ -14,7 +14,7 @@
 const char* ssid        = CLIENT_SSID;
 const char* password    = CLIENT_PASSPHRASE;
 const char* mqtt_server = MQTT_SERVER;
-WiFiClient serverClient;
+WiFiClient server_client;
 
 // Aurora/LED Variables
 String device_id;
@@ -34,6 +34,10 @@ unsigned long next_telemetry_time = telemetry_interval;
 unsigned long rendertik_interval = 1000 / 40;
 unsigned long next_rendertik_time = rendertik_interval;
 
+unsigned long fps_interval = 1000;
+unsigned long next_fps_time = fps_interval;
+unsigned int frames = 0;
+
 void clear(unsigned long h, short int s, short int v) {
   for(int x=0; x<20; x++) {
     led_strip->setPixelColor(icosahedron_hardware_map[x], led_strip->ColorHSV(h,s,v));
@@ -42,28 +46,22 @@ void clear(unsigned long h, short int s, short int v) {
   led_strip->show();
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  if(strcmp(topic, (device_id + "_ff").c_str()) == 0 && length%3 == 0) {
-    memcpy(frame_buffer, payload, FRAME_BUFFER_SIZE);
-  }
-}
+//void callback(char* topic, byte* payload, unsigned int length) {
+//  if(strcmp(topic, (device_id + "_ff").c_str()) == 0 && length%3 == 0) {
+//    memcpy(frame_buffer, payload, FRAME_BUFFER_SIZE);
+//  }
+//}
 
 void sendTelemetry() {
-  //if(mqtt_client.connected()) {
-  //  const String metrics_payload =
-  //    String("{") +
-  //      "\"alive\":1," +
-  //      "\"free_heap\":" + ESP.getFreeHeap() +
-  //    "}";
-  //  const String telemetry_payload =
-  //    String("{") +
-  //      "\"device_id\":\"" + device_id + "\"," +
-  //      "\"geometry\":\"" + geometry + "\"" +
-  //    "}";
+  if(server_client.connected()) {
+    const String telemetry_payload =
+      String("{\"topic\": \"device_telemetry\", \"payload\": {") +
+        "\"device_id\":\"" + device_id + "\"," +
+        "\"geometry\":\"" + geometry + "\"" +
+      "}}";
 
-  //  mqtt_client.publish("device_telemetry", telemetry_payload.c_str());
-  //  mqtt_client.publish("aurora_metrics/icosahedron", metrics_payload.c_str());
-  //}
+    server_client.print(telemetry_payload.c_str());
+  }
 }
 
 void reconnect() {
@@ -72,12 +70,11 @@ void reconnect() {
   String clientId = "AuroraDevice-";
   clientId += device_id;
 
-  if (!serverClient.connect(mqtt_server, 1337)) {
-    Serial.println("Connection to host failed");
-
-    delay(1000);
+  if (!server_client.connect(mqtt_server, 1337)) {
+    Serial.println("Connection to host failed! :(");
     return;
   }
+
   Serial.println("Connection to server worked! POG");
 
   // Attempt to connect
@@ -93,6 +90,8 @@ void reconnect() {
 }
 
 void setup() {
+  delay(5000);
+
   Serial.begin(115200);
   Serial.println("Booting");
   WiFi.mode(WIFI_STA);
@@ -114,16 +113,33 @@ void setup() {
   led_strip->begin();
   led_strip->show(); // Initialize all pixels to 'off'
 
+  reconnect();
+
   //mqtt_client.setServer(mqtt_server, 1883);
   //mqtt_client.setCallback(callback);
 }
 
 void loop() {
-  ArduinoOTA.handle();
+  if(server_client.available() >= FRAME_BUFFER_SIZE) {
+    //Serial.println(server_client.available());
+
+    for(short int i = 0; i < FRAME_BUFFER_SIZE; i++) {
+      char c = server_client.read();
+
+      frame_buffer[i] = c;
+    }
+
+    for(short int i = 0; i < FRAME_BUFFER_SIZE; i=i+3) {
+      led_strip->setPixelColor(icosahedron_hardware_map[i%20], led_strip->Color(frame_buffer[i], frame_buffer[i+1], frame_buffer[i+2]));
+    }
+    frames++;
+    led_strip->show();
+  }
+
+  //ArduinoOTA.handle();
   current_time = millis();
 
   //if (!mqtt_client.connected()) {
-  //  reconnect();
   //}
   //mqtt_client.loop();
 
@@ -131,15 +147,32 @@ void loop() {
   if(current_time > next_rendertik_time) {
     next_rendertik_time = current_time + rendertik_interval;
 
-    clear(loop_count,255,255);
+    if(!server_client.connected()) {
+      // strobe red when the server is not connected
+      clear(0,255,((1+sin((float)loop_count / 20000)) * 255 / 4) + ((float)255*0.5));
 
-    led_strip->show();
+      led_strip->show();
+    } else {
+    }
   }
 
   // Clock for the telemetry sender
   if(current_time > next_telemetry_time) {
+    if(!server_client.connected()) {
+      Serial.println("connection gone.... attempting reconnect...");
+      reconnect();
+      sendTelemetry();
+    }
+
     next_telemetry_time = current_time + telemetry_interval;
-    sendTelemetry();
+  }
+
+  // Clock for the telemetry sender
+  if(current_time > next_fps_time) {
+    Serial.println(frames);
+
+    frames = 0;
+    next_fps_time = current_time + fps_interval;
   }
   loop_count++;
 }
