@@ -18,6 +18,9 @@ build-ip-monitor: build-ip monitor
 monitor:
 	pio device monitor --port=$(SERIAL_DEV)
 
+build-monitor:
+	PLATFORMIO_BUILD_FLAGS=$(BUILD_FLAGS) pio run --upload-port $(SERIAL_DEV) --target monitor
+
 build-serial:
 	PLATFORMIO_BUILD_FLAGS=$(BUILD_FLAGS) pio run --upload-port $(SERIAL_DEV) --target upload
 
