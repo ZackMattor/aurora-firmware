@@ -46,12 +46,6 @@ void clear(unsigned long h, short int s, short int v) {
   led_strip->show();
 }
 
-//void callback(char* topic, byte* payload, unsigned int length) {
-//  if(strcmp(topic, (device_id + "_ff").c_str()) == 0 && length%3 == 0) {
-//    memcpy(frame_buffer, payload, FRAME_BUFFER_SIZE);
-//  }
-//}
-
 void sendTelemetry() {
   if(server_client.connected()) {
     const String telemetry_payload =
@@ -76,17 +70,6 @@ void reconnect() {
   }
 
   Serial.println("Connection to server worked! POG");
-
-  // Attempt to connect
-  //if (mqtt_client.connect(clientId.c_str())) {
-  //  Serial.println("connected");
-
-  //  mqtt_client.subscribe((device_id + "_ff").c_str());
-  //  sendTelemetry();
-  //} else {
-  //  Serial.print("failed, rc=");
-  //  Serial.print(mqtt_client.state());
-  //}
 }
 
 void setup() {
@@ -114,12 +97,13 @@ void setup() {
   led_strip->show(); // Initialize all pixels to 'off'
 
   reconnect();
-
-  //mqtt_client.setServer(mqtt_server, 1883);
-  //mqtt_client.setCallback(callback);
 }
 
 void loop() {
+  if(WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("WiFi not connected...");
+  }
+
   if(server_client.available() >= FRAME_BUFFER_SIZE) {
     //Serial.println(server_client.available());
 
@@ -136,12 +120,8 @@ void loop() {
     led_strip->show();
   }
 
-  //ArduinoOTA.handle();
+  ArduinoOTA.handle();
   current_time = millis();
-
-  //if (!mqtt_client.connected()) {
-  //}
-  //mqtt_client.loop();
 
   // Clock for the render tik
   if(current_time > next_rendertik_time) {
