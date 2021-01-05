@@ -52,6 +52,7 @@ void sendTelemetry() {
       "}}";
 
     server_client.print(telemetry_payload.c_str());
+    Serial.println("Telemetry sent!");
   }
 }
 
@@ -66,6 +67,7 @@ void reconnect() {
     return;
   }
 
+  sendTelemetry();
   Serial.println("Connection to server worked! POG");
 }
 
@@ -99,6 +101,7 @@ void setup() {
 void loop() {
   if(WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi not connected...");
+    ESP.restart();
   }
 
   if(server_client.available() >= FRAME_BUFFER_SIZE) {
@@ -138,7 +141,6 @@ void loop() {
     if(!server_client.connected()) {
       Serial.println("connection gone.... attempting reconnect...");
       reconnect();
-      sendTelemetry();
     }
 
     next_telemetry_time = current_time + telemetry_interval;
