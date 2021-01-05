@@ -2,6 +2,14 @@
 
 This is the firmware for the Aurora IOT lighting system.
 
+**This is part of the Aurora Lighting System**
+
+[Aurora Firmware](https://github.com/ZackMattor/aurora-firmware)
+
+[Aurora Home Hub](https://github.com/ZackMattor/aurora-home-hub)
+
+[Aurora App](https://github.com/ZackMattor/aurora-app-v2)
+
 ## Depedencies
  - make
  - python3
