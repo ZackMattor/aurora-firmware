@@ -1,6 +1,5 @@
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
 #include <Arduino.h>
-#include <PubSubClient.h>
 #include <Adafruit_NeoPixel.h>
 #include "QList.h"
 #include "config.h"
