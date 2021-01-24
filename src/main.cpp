@@ -1,4 +1,9 @@
-#include <WiFi.h>
+// Needed for ESP8266
+#include <ESP8266WiFi.h>
+
+// Needed for ESP32
+//#include <WiFi.h>
+
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include "QList.h"
@@ -14,8 +19,8 @@ WiFiClient server_client;
 
 // Aurora/LED Variables
 String device_id;
-const String geometry = "icosahedron";
-Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PIN, NEO_GRBW + NEO_KHZ800);
+const String geometry = "shard";
+Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PIN, NEO_RGB + NEO_KHZ800);
 
 const unsigned int FRAME_BUFFER_SIZE = GEOMETRY_WIDTH * 3;
 byte frame_buffer[FRAME_BUFFER_SIZE];
@@ -35,8 +40,8 @@ unsigned long next_fps_time = fps_interval;
 unsigned int frames = 0;
 
 void clear(unsigned long h, short int s, short int v) {
-  for(int x=0; x<20; x++) {
-    led_strip->setPixelColor(icosahedron_hardware_map[x], led_strip->ColorHSV(h,s,v));
+  for(int x=0; x<GEOMETRY_WIDTH; x++) {
+    led_strip->setPixelColor(x, led_strip->ColorHSV(h,s,v));
   }
 
   led_strip->show();

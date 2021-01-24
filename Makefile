@@ -16,13 +16,13 @@ build-serial-monitor: build-serial monitor
 build-ip-monitor: build-ip monitor
 
 monitor:
-	pio device monitor --port=$(SERIAL_DEV) --environment esp32
+	pio device monitor --port=$(SERIAL_DEV) --environment huzzah
 
 build-monitor:
-	PLATFORMIO_BUILD_FLAGS=$(BUILD_FLAGS) pio run --upload-port $(SERIAL_DEV) --target monitor --environment esp32
+	PLATFORMIO_BUILD_FLAGS=$(BUILD_FLAGS) pio run --upload-port $(SERIAL_DEV) --target monitor --environment huzzah
 
 build-serial:
-	PLATFORMIO_BUILD_FLAGS=$(BUILD_FLAGS) pio run --upload-port $(SERIAL_DEV) --target upload --environment esp32
+	PLATFORMIO_BUILD_FLAGS=$(BUILD_FLAGS) pio run --upload-port $(SERIAL_DEV) --target upload --environment huzzah
 
 build-ip:
 	PLATFORMIO_UPLOAD_FLAGS=$(UPLOAD_FLAGS) PLATFORMIO_BUILD_FLAGS=$(BUILD_FLAGS) pio run --upload-port $(IP_ADDRESS) --target upload --environment esp32
