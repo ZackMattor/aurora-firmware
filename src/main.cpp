@@ -1,8 +1,8 @@
 // Needed for ESP8266
-#include <ESP8266WiFi.h>
+//#include <ESP8266WiFi.h>
 
 // Needed for ESP32
-//#include <WiFi.h>
+#include <WiFi.h>
 
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
