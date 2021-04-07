@@ -39,7 +39,7 @@ unsigned int frames = 0;
 void clear(unsigned long h, short int s, short int v) {
   for(int x=0; x<GEOMETRY_WIDTH; x++) {
     //led_strip->setPixelColor(x, led_strip->ColorRGB(h,s,v));
-    led_strip->setPixelColor(hardware_map[x], 255,0,0);
+    led_strip->setPixelColor(hardware_map[x], 0,0,0);
   }
 
   led_strip->show();
@@ -105,23 +105,30 @@ void setup() {
 short buffer_started = 0;
 short buffer_ready = 0;
 
-void loop() {
-  if(WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("WiFi not connected...");
-    ESP.restart();
-  }
 
-  // 4444444440
+// 1 255 255 1 255 255 0 1 255 255 1 255 255 0 1 255 255 1 255 255 0
+
+void loop() {
   // Transform data stream into frame buffer
   while(server_client.available()) {
     unsigned int buffer_length = strlen(frame_buffer);
     char c = server_client.read();
+    Serial.print((byte)c);
 
     // The end of the old and start of the new!
     if(c == 0) {
+      //Serial.print("Z");
       buffer_started = 1;
 
       if(buffer_length != 0) {
+        //Serial.print("D");
+        //Serial.println("");
+        //for(int i=0; i<strlen(frame_buffer); i++) {
+          //Serial.print((byte)frame_buffer[i]);
+          //Serial.print("|");
+        //}
+        //Serial.println("");
+
         buffer_ready = 1;
         break;
       }
@@ -131,67 +138,130 @@ void loop() {
         strncat(frame_buffer, &c, 1);
       }
     }
+    //Serial.print("|");
   }
 
+  //buffer_ready=1;
   if(buffer_ready == 1) {
+    Serial.println("");
     Serial.println("Buffer Ready");
+    Serial.println("");
+
+    for(int i=0; i<strlen(frame_buffer); i++) {
+      Serial.print((byte)frame_buffer[i]);
+      Serial.print("|");
+    }
+    Serial.println("|");
 
     for(short int i = 0; i < FRAME_BUFFER_SIZE; i=i+3) {
       unsigned int led_id = i / 3;
-      //Serial.print(led_id);
-      //Serial.print("(");
-      //Serial.print((byte)frame_buffer[i]);
-      //Serial.print("|");
-      //Serial.print((byte)frame_buffer[i+1]);
-      //Serial.print("|");
-      //Serial.print((byte)frame_buffer[i+2]);
-      //Serial.print(") ");
-      if(led_id < 20) {
-        //led_strip->setPixelColor(led_id, led_strip->Color(frame_buffer[i], frame_buffer[i+1], frame_buffer[i+2]));
+
+      if(led_id <= GEOMETRY_WIDTH){//GEOMETRY_WIDTH) {
         led_strip->setPixelColor(led_id, led_strip->Color(frame_buffer[i], frame_buffer[i+1], frame_buffer[i+2]));
       }
     }
 
-    frames++;
+    //frames++;
+    //Serial.println(" || RENDER ||");
     led_strip->show();
-    //Serial.println("");
+    //Serial.println("asdf");
 
     buffer_ready = 0;
     memset(frame_buffer, 0, FRAME_BUFFER_SIZE);
   }
-
-  ArduinoOTA.handle();
-  current_time = millis();
-
-  // Clock for the render tik
-  if(current_time > next_rendertik_time) {
-    next_rendertik_time = current_time + rendertik_interval;
-
-    if(!server_client.connected()) {
-      // strobe red when the server is not connected
-      clear(0,255,((1+sin((float)loop_count / 20000)) * 255 / 4) + ((float)255*0.5));
-
-      led_strip->show();
-    } else {
-    }
-  }
-
-  // Clock for the telemetry sender
-  if(current_time > next_telemetry_time) {
-    if(!server_client.connected()) {
-      Serial.println("connection gone.... attempting reconnect...");
-      reconnect();
-    }
-
-    next_telemetry_time = current_time + telemetry_interval;
-  }
-
-  // Clock for the telemetry sender
-  if(current_time > next_fps_time) {
-    Serial.println(frames);
-
-    frames = 0;
-    next_fps_time = current_time + fps_interval;
-  }
-  loop_count++;
 }
+
+//void loop() {
+//  if(WiFi.waitForConnectResult() != WL_CONNECTED) {
+//    Serial.println("WiFi not connected...");
+//    ESP.restart();
+//  }
+//
+//  // 4444444440
+//  // Transform data stream into frame buffer
+//  while(server_client.available()) {
+//    unsigned int buffer_length = strlen(frame_buffer);
+//    char c = server_client.read();
+//
+//    // The end of the old and start of the new!
+//    if(c == 0) {
+//      buffer_started = 1;
+//
+//      if(buffer_length != 0) {
+//        buffer_ready = 1;
+//        break;
+//      }
+//    } else {
+//      if(buffer_started == 1 && buffer_length < FRAME_BUFFER_SIZE) {
+//        // Push item onto frame buffer
+//        strncat(frame_buffer, &c, 1);
+//      }
+//    }
+//  }
+//
+//  if(buffer_ready == 1) {
+//    Serial.println("Buffer Ready");
+//    clear(255,255,255);
+//    //delay(2);
+//
+//    //for(short int i = 0; i < FRAME_BUFFER_SIZE; i=i+3) {
+//    //  unsigned int led_id = i / 3;
+//    //  Serial.print(led_id);
+//    //  Serial.print("(");
+//    //  Serial.print((byte)frame_buffer[i]);
+//    //  Serial.print("|");
+//    //  Serial.print((byte)frame_buffer[i+1]);
+//    //  Serial.print("|");
+//    //  Serial.print((byte)frame_buffer[i+2]);
+//    //  Serial.print(") ");
+//    //  if(led_id <= GEOMETRY_WIDTH){//GEOMETRY_WIDTH) {
+//    //    Serial.print("Y ");
+//    //    led_strip->setPixelColor(hardware_map[led_id], led_strip->Color(frame_buffer[i], frame_buffer[i+1], frame_buffer[i+2]));
+//    //    //led_strip->setPixelColor(led_id, led_strip->Color(frame_buffer[i], frame_buffer[i+1], frame_buffer[i+2]));
+//    //  }
+//    //}
+//
+//    //frames++;
+//    //Serial.println(" || RENDER ||");
+//    ////led_strip->show();
+//    //Serial.println("");
+//
+//    buffer_ready = 0;
+//    memset(frame_buffer, 0, FRAME_BUFFER_SIZE);
+//  }
+//
+//  ArduinoOTA.handle();
+//  current_time = millis();
+//
+//  // Clock for the render tik
+//  if(current_time > next_rendertik_time) {
+//    next_rendertik_time = current_time + rendertik_interval;
+//
+//    if(!server_client.connected()) {
+//      // strobe red when the server is not connected
+//      clear(0,255,((1+sin((float)loop_count / 20000)) * 255 / 4) + ((float)255*0.5));
+//
+//      led_strip->show();
+//    } else {
+//    }
+//  }
+//
+//  // Clock for the telemetry sender
+//  if(current_time > next_telemetry_time) {
+//    if(!server_client.connected()) {
+//      Serial.println("connection gone.... attempting reconnect...");
+//      reconnect();
+//    }
+//
+//    next_telemetry_time = current_time + telemetry_interval;
+//  }
+//
+//  // Clock for the telemetry sender
+//  if(current_time > next_fps_time) {
+//    Serial.println(frames);
+//
+//    frames = 0;
+//    next_fps_time = current_time + fps_interval;
+//  }
+//  loop_count++;
+//}
