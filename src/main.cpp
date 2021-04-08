@@ -30,9 +30,8 @@ LinkedList<String> * frame_buffer = new LinkedList<String>();
 unsigned long loop_count = 0;
 unsigned long current_time = 0;
 
-// hacky clock system variables
-//unsigned long telemetry_interval = 5000;
-//unsigned long next_telemetry_time = telemetry_interval;
+unsigned long telemetry_interval = 5000;
+unsigned long next_telemetry_time = telemetry_interval;
 
 unsigned long rendertik_interval = 1000 / 30;
 unsigned long next_rendertik_time = rendertik_interval;
@@ -150,6 +149,16 @@ void loop() {
     //Serial.println(" | Rendered");
 
     next_rendertik_time = current_time + rendertik_interval + drift_adjustment;
+  }
+
+  // Clock for the telemetry sender
+  if(current_time > next_telemetry_time) {
+    if(!server_client.connected()) {
+      Serial.println("connection gone.... attempting reconnect...");
+      reconnect();
+    }
+
+    next_telemetry_time = current_time + telemetry_interval;
   }
 
   current_time = millis();
