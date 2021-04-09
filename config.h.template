@@ -2,6 +2,6 @@
 #define SERIAL_DEV "/dev/ttyUSB2"
 #define CLIENT_SSID "foobar"
 #define CLIENT_PASSPHRASE "BazTazzzzz"
-#define MQTT_SERVER "10.0.0.192"
+#define SERVER_ENDPOINT "10.0.0.192"
 #define NEOPIXEL_PIN 15
 #define GEOMETRY_TYPE "icosahedron"
