@@ -4,42 +4,33 @@
 #include <LinkedList.h>
 #include "QList.h"
 #include "config.h"
-//#include "ota_update.h"
+#include "ota_update.h"
+#include "utils/timer.h"
 
 //#include "geometry/shard.h"
 #include "geometry/icosahedron.h"
 
 // WiFi/Network Settings
-const char* ssid        = CLIENT_SSID;
-const char* password    = CLIENT_PASSPHRASE;
-const char* server_endpoint = MQTT_SERVER;
+const char* ssid            = CLIENT_SSID;
+const char* password        = CLIENT_PASSPHRASE;
+const char* server_endpoint = SERVER_ENDPOINT;
 WiFiClient server_client;
 
 // Aurora/LED Variables
-String device_id;
 const String geometry = GEOMETRY_TYPE;
 Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PIN, LED_META);
 
 const unsigned int FRAME_BUFFER_SIZE = GEOMETRY_WIDTH * 3;
 
-//unsigned short frame_writer_index = 0;
-//unsigned short frame_render_index = 0;
-//char frame_buffer[100][FRAME_BUFFER_SIZE];
-LinkedList<String> * frame_buffer = new LinkedList<String>();
-
 unsigned long loop_count = 0;
 unsigned long current_time = 0;
-
-unsigned long telemetry_interval = 5000;
-unsigned long next_telemetry_time = telemetry_interval;
-
-unsigned long rendertik_interval = 1000 / 30;
-unsigned long next_rendertik_time = rendertik_interval;
+unsigned int frames = 0;
 int drift_adjustment = 0;
 
-//unsigned long fps_interval = 1000;
-//unsigned long next_fps_time = fps_interval;
-unsigned int frames = 0;
+LinkedList<String> * frame_buffer = new LinkedList<String>();
+
+Timer *reconnect_timer = timer_create(15000);
+Timer *frame_render_timer = timer_create(1000 / 30);
 
 //void clear(unsigned long h, short int s, short int v) {
 //  for(int x=0; x<GEOMETRY_WIDTH; x++) {
@@ -54,7 +45,7 @@ void sendTelemetry() {
   if(server_client.connected()) {
     const String telemetry_payload =
       String("{\"topic\": \"device_telemetry\", \"payload\": {") +
-        "\"device_id\":\"" + device_id + "\"," +
+        "\"device_id\":\"" + String(WiFi.macAddress()) + "\"," +
         "\"geometry\":\"" + geometry + "\"" +
       "}}";
 
@@ -65,9 +56,6 @@ void sendTelemetry() {
 
 void reconnect() {
   Serial.print("Attempting home hub connection...");
-  // Create a random client ID
-  String clientId = "AuroraDevice-";
-  clientId += device_id;
 
   if (!server_client.connect(server_endpoint, 1337)) {
     Serial.println("Connection to host failed! :(");
@@ -75,10 +63,8 @@ void reconnect() {
   }
 
   sendTelemetry();
-  Serial.println("Connection to server worked! POG");
+  Serial.println("Connection Successful");
 }
-
-byte start_rendering = 0;
 
 void setup() {
   delay(5000);
@@ -86,13 +72,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Booting");
   WiFi.mode(WIFI_STA);
-  device_id = String(WiFi.macAddress());
   WiFi.begin(ssid, password);
 
-  //ota_setup();
+  ota_setup();
 
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
+    Serial.println("Connection to WiFi failed! Rebooting...");
     delay(5000);
     ESP.restart();
   }
@@ -108,30 +93,26 @@ void setup() {
 }
 
 void loop() {
-  // Transform data stream into frame buffer
+  // Read data from our TCP socket into our frame buffer.
   while(server_client.available()) {
     String line = server_client.readStringUntil(0);
     frame_buffer->add(line);
-    //Serial.print(frame_buffer->size());
-    //Serial.println(" | New Frame");
 
     break;
   }
 
-  if(next_rendertik_time < current_time && frame_buffer->size() > 0) {
-    //for(int i=0; i<strlen(frame_buffer); i++) {
-    //  Serial.print((byte)frame_buffer[i]);
-    //  Serial.print("|");
-    //}
-
-    char frame_chars[FRAME_BUFFER_SIZE];
-    frame_buffer->shift().toCharArray(frame_chars, FRAME_BUFFER_SIZE);
+  if(frame_buffer->size() > 0 && timer_check(frame_render_timer)) {
+    char frame_chars[FRAME_BUFFER_SIZE+1];
+    frame_buffer->shift().toCharArray(frame_chars, FRAME_BUFFER_SIZE+1);
 
     for(short int i = 0; i < FRAME_BUFFER_SIZE; i=i+3) {
       unsigned int led_id = i / 3;
 
       if(led_id <= GEOMETRY_WIDTH) {
-        led_strip->setPixelColor(led_id, led_strip->Color(frame_chars[i], frame_chars[i+1], frame_chars[i+2]));
+        led_strip->setPixelColor(led_id,
+                                 led_strip->Color(frame_chars[i],
+                                                  frame_chars[i+1],
+                                                  frame_chars[i+2]));
       }
     }
 
@@ -143,23 +124,21 @@ void loop() {
     else if(frame_buffer->size() < 5) drift_adjustment = 5;
     else drift_adjustment = 0;
 
-    //Serial.print(frame_buffer->size());
-    //Serial.print(" | ");
-    //Serial.print(drift_adjustment);
-    //Serial.println(" | Rendered");
+    Serial.print(frame_buffer->size());
+    Serial.print(" | ");
+    Serial.print(drift_adjustment);
+    Serial.println(" | Rendered");
 
-    next_rendertik_time = current_time + rendertik_interval + drift_adjustment;
+    frame_render_timer->next_tick += drift_adjustment;
   }
 
-  // Clock for the telemetry sender
-  if(current_time > next_telemetry_time) {
+  if(timer_check(reconnect_timer)) {
     if(!server_client.connected()) {
       Serial.println("connection gone.... attempting reconnect...");
       reconnect();
     }
 
-    next_telemetry_time = current_time + telemetry_interval;
   }
 
-  current_time = millis();
+  timer_tick();
 }
