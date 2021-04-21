@@ -4,7 +4,8 @@
 
 #define LED_META (NEO_GRB + NEO_KHZ800)
 #define GEOMETRY_WIDTH 6
-#define GEOMETRY_TYPE "shard"
+
+const String geometry_name = "shard";
 
 static const char hardware_map[7] = {
   0,
