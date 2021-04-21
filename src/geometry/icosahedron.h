@@ -4,7 +4,8 @@
 
 #define LED_META (NEO_GRBW + NEO_KHZ800)
 #define GEOMETRY_WIDTH 20
-#define GEOMETRY_TYPE "icosahedron"
+
+const String geometry_name = "icosahedron";
 
 static const char hardware_map[20] = {
   0,  // 1

@@ -7,8 +7,13 @@
 #include "ota_update.h"
 #include "utils/timer.h"
 
-//#include "geometry/shard.h"
+#if GEOMETRY_TYPE == GEOMETRY_SHARD
+#include "geometry/shard.h"
+#endif
+
+#if GEOMETRY_TYPE == GEOMETRY_ICOSAHEDRON
 #include "geometry/icosahedron.h"
+#endif
 
 // WiFi/Network Settings
 const char* ssid            = CLIENT_SSID;
@@ -17,7 +22,6 @@ const char* server_endpoint = SERVER_ENDPOINT;
 WiFiClient server_client;
 
 // Aurora/LED Variables
-const String geometry = GEOMETRY_TYPE;
 Adafruit_NeoPixel *led_strip = new Adafruit_NeoPixel(GEOMETRY_WIDTH, NEOPIXEL_PIN, LED_META);
 
 const unsigned int FRAME_BUFFER_SIZE = GEOMETRY_WIDTH * 3;
@@ -46,7 +50,7 @@ void sendTelemetry() {
     const String telemetry_payload =
       String("{\"topic\": \"device_telemetry\", \"payload\": {") +
         "\"device_id\":\"" + String(WiFi.macAddress()) + "\"," +
-        "\"geometry\":\"" + geometry + "\"" +
+        "\"geometry\":\"" + geometry_name + "\"" +
       "}}";
 
     server_client.print(telemetry_payload.c_str());
@@ -106,7 +110,7 @@ void loop() {
     frame_buffer->shift().toCharArray(frame_chars, FRAME_BUFFER_SIZE+1);
 
     for(short int i = 0; i < FRAME_BUFFER_SIZE; i=i+3) {
-      unsigned int led_id = i / 3;
+      unsigned int led_id = hardware_map[i / 3];
 
       if(led_id <= GEOMETRY_WIDTH) {
         led_strip->setPixelColor(led_id,
