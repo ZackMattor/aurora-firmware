@@ -58,7 +58,7 @@ void sendTelemetry() {
   }
 }
 
-void reconnect() {
+void reconnectToAurora() {
   Serial.print("Attempting home hub connection...");
 
   if (!server_client.connect(server_endpoint, 1337)) {
@@ -70,12 +70,22 @@ void reconnect() {
   Serial.println("Connection Successful");
 }
 
+void wiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
+  Serial.println("Disconnected from WiFi access point");
+  Serial.print("WiFi lost connection. Reason: ");
+  Serial.println(info.disconnected.reason);
+  Serial.println("Trying to Reconnect to the access point...");
+  WiFi.begin(ssid, password);
+}
+
 void setup() {
   delay(5000);
 
   Serial.begin(115200);
   Serial.println("Booting");
+
   WiFi.mode(WIFI_STA);
+  WiFi.onEvent(wiFiStationDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
   WiFi.begin(ssid, password);
 
   ota_setup();
@@ -93,7 +103,7 @@ void setup() {
   led_strip->begin();
   led_strip->show(); // Initialize all pixels to 'off'
 
-  reconnect();
+  reconnectToAurora();
 }
 
 void loop() {
@@ -139,7 +149,7 @@ void loop() {
   if(timer_check(reconnect_timer)) {
     if(!server_client.connected()) {
       Serial.println("connection gone.... attempting reconnect...");
-      reconnect();
+      reconnectToAurora();
     }
 
   }
