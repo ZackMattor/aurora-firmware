@@ -2,23 +2,37 @@
 
 static WiFiClient aurora_client;
 static String aurora_endpoint;
-static String aurora_geometry_name;
 static String aurora_id;
 static int drift_adjustment = 0;
 
-static Adafruit_NeoPixel *led_strip;
-static unsigned int FRAME_BUFFER_SIZE;
-static LinkedList<String> * frame_buffer;
-static int geometry_width;
+static struct NeoOutput {
+  Adafruit_NeoPixel *led_strip;
+  unsigned int frame_buffer_size;
+  LinkedList<String> * frame_buffer;
+  int geometry_width;
+  String geometry_name;
+} neo_output;
+
+static LinkedList<NeoOutput> aurora_neo_outputs;
 
 void aurora_init(String endpoint, String id) {
-  frame_buffer = new LinkedList<String>();
   aurora_endpoint = endpoint;
-  Serial.println(endpoint);
   aurora_id = id;
+}
 
-  led_strip->begin();
-  led_strip->show(); // Initialize all pixels to 'off'
+void aurora_add_output_neo(int width, int pin, int led_meta, String geometry) {
+  NeoOutput neo_output;
+
+  neo_output.led_strip = new Adafruit_NeoPixel(width, pin, led_meta);
+  neo_output.frame_buffer_size = width * 3;
+  neo_output.frame_buffer = new LinkedList<String>();
+  neo_output.geometry_width = width;
+  neo_output.geometry_name = geometry;
+
+  neo_output.led_strip->begin();
+  neo_output.led_strip->show();
+
+  aurora_neo_outputs.add(neo_output);
 }
 
 void aurora_sendTelemetry() {
@@ -26,7 +40,7 @@ void aurora_sendTelemetry() {
     const String telemetry_payload =
       String("{\"topic\": \"device_telemetry\", \"payload\": {") +
         "\"device_id\":\"" + aurora_id + "\"," +
-        "\"geometry\":\"" + aurora_geometry_name + "\"" +
+        "\"geometry\":\"" + aurora_neo_outputs.get(0).geometry_name + "\"" +
       "}}";
 
     aurora_client.print(telemetry_payload.c_str());
@@ -60,6 +74,8 @@ void aurora_check_connection() {
 }
 
 void aurora_process() {
+  LinkedList<String> * frame_buffer = aurora_neo_outputs.get(0).frame_buffer;
+
   while(aurora_client.available()) {
     String line = aurora_client.readStringUntil(0);
     frame_buffer->add(line);
@@ -69,11 +85,19 @@ void aurora_process() {
 }
 
 int aurora_render(const char hardware_map[]) {
-  if(frame_buffer->size() > 0) {
-    char frame_chars[FRAME_BUFFER_SIZE+1];
-    frame_buffer->shift().toCharArray(frame_chars, FRAME_BUFFER_SIZE+1);
+  // TODO - iterate over these
+  NeoOutput neo_output = aurora_neo_outputs.get(0);
 
-    for(short int i = 0; i < FRAME_BUFFER_SIZE; i=i+3) {
+  Adafruit_NeoPixel *led_strip = neo_output.led_strip;
+  unsigned int frame_buffer_size = neo_output.frame_buffer_size;
+  LinkedList<String> * frame_buffer = neo_output.frame_buffer;
+  int geometry_width = neo_output.geometry_width;
+
+  if(frame_buffer->size() > 0) {
+    char frame_chars[frame_buffer_size+1];
+    frame_buffer->shift().toCharArray(frame_chars, frame_buffer_size+1);
+
+    for(short int i = 0; i < frame_buffer_size; i=i+3) {
       unsigned int led_id = hardware_map[i / 3];
 
       if(led_id <= geometry_width) {
@@ -101,9 +125,3 @@ int aurora_render(const char hardware_map[]) {
   return 0;
 }
 
-void aurora_add_output_neo(int width, int pin, int led_meta, String geometry) {
-  geometry_width = width;
-  aurora_geometry_name = geometry;
-  FRAME_BUFFER_SIZE = geometry_width * 3;
-  led_strip = new Adafruit_NeoPixel(geometry_width, pin, led_meta);
-}
