@@ -5,15 +5,25 @@ static String aurora_endpoint;
 static String aurora_id;
 static int drift_adjustment = 0;
 
-static struct NeoOutput {
+static struct AuroraNeoOutput {
   Adafruit_NeoPixel *led_strip;
   unsigned int frame_buffer_size;
   LinkedList<String> * frame_buffer;
   int geometry_width;
   String geometry_name;
-} neo_output;
+} aurora_neo_output;
 
-static LinkedList<NeoOutput> aurora_neo_outputs;
+// Inputs only support switches at the moment
+enum AuroraInputType { AuroraSwitch };
+
+static struct AuroraInput {
+  int pin;
+  String name;
+  enum AuroraInputType type;
+} aurora_input;
+
+static LinkedList<AuroraNeoOutput> aurora_neo_outputs;
+static LinkedList<AuroraInput> aurora_inputs;
 
 void aurora_init(String endpoint, String id) {
   aurora_endpoint = endpoint;
@@ -21,7 +31,7 @@ void aurora_init(String endpoint, String id) {
 }
 
 void aurora_add_output_neo(int width, int pin, int led_meta, String geometry) {
-  NeoOutput neo_output;
+  AuroraNeoOutput neo_output;
 
   neo_output.led_strip = new Adafruit_NeoPixel(width, pin, led_meta);
   neo_output.frame_buffer_size = width * 3;
@@ -35,18 +45,43 @@ void aurora_add_output_neo(int width, int pin, int led_meta, String geometry) {
   aurora_neo_outputs.add(neo_output);
 }
 
-void aurora_sendTelemetry() {
+void aurora_add_input_switch(int pin, String name) {
+  AuroraInput aurora_input;
+
+  aurora_input.pin = pin;
+  aurora_input.name = name;
+  aurora_input.type = AuroraSwitch;
+
+
+  // TODO - init pin, pullup?
+  // TODO - Add all input state to device telemetry
+
+  aurora_inputs.add(aurora_input);
+}
+
+void aurora_send_activate() {
+  if(aurora_client.connected()) {
+    const String activate_payload =
+      String("{\"topic\": \"device_activate\", \"payload\": {") +
+        "\"device_id\":\"" + aurora_id + "\"," +
+        "\"geometry\":\"" + aurora_neo_outputs.get(0).geometry_name + "\"" +
+      "}}";
+
+    aurora_client.print(activate_payload.c_str());
+  }
+}
+
+void aurora_send_telemetry() {
   if(aurora_client.connected()) {
     const String telemetry_payload =
       String("{\"topic\": \"device_telemetry\", \"payload\": {") +
         "\"device_id\":\"" + aurora_id + "\"," +
-        "\"geometry\":\"" + aurora_neo_outputs.get(0).geometry_name + "\"" +
+        "\"input_state\": []" +
       "}}";
 
     aurora_client.print(telemetry_payload.c_str());
   }
 }
-
 
 void aurora_connect() {
   Serial.print("Attempting home hub connection...");
@@ -60,8 +95,8 @@ void aurora_connect() {
     return;
   }
 
-  aurora_sendTelemetry();
-  Serial.println("Telemetry sent!");
+  aurora_send_activate();
+  Serial.println("Activate sent!");
   Serial.println("Connection Successful");
 }
 
@@ -86,7 +121,7 @@ void aurora_process() {
 
 int aurora_render(const char hardware_map[]) {
   // TODO - iterate over these
-  NeoOutput neo_output = aurora_neo_outputs.get(0);
+  AuroraNeoOutput neo_output = aurora_neo_outputs.get(0);
 
   Adafruit_NeoPixel *led_strip = neo_output.led_strip;
   unsigned int frame_buffer_size = neo_output.frame_buffer_size;
