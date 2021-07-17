@@ -15,6 +15,10 @@
 #include "geometry/icosahedron.h"
 #endif
 
+#if GEOMETRY_TYPE == GEOMETRY_GRID
+#include "geometry/grid.h"
+#endif
+
 // WiFi/Network Settings
 const char* ssid            = CLIENT_SSID;
 const char* password        = CLIENT_PASSPHRASE;
