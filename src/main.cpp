@@ -60,6 +60,9 @@ void setup() {
 
   aurora_add_output_neo(GEOMETRY_WIDTH, NEOPIXEL_PIN, LED_META, geometry_name);
   aurora_add_input_switch(15, String("door"));
+  aurora_add_input_switch(16, String("button"));
+  aurora_add_input_switch(17, String("foobar"));
+  aurora_add_input_switch(18, String("foobsdfar"));
   aurora_init(server_endpoint, String(WiFi.macAddress()));
 
   aurora_connect();

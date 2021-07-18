@@ -20,6 +20,7 @@ static struct AuroraInput {
   int pin;
   String name;
   enum AuroraInputType type;
+  byte value;
 } aurora_input;
 
 static LinkedList<AuroraNeoOutput> aurora_neo_outputs;
@@ -52,11 +53,10 @@ void aurora_add_input_switch(int pin, String name) {
   aurora_input.name = name;
   aurora_input.type = AuroraSwitch;
 
-
-  // TODO - init pin, pullup?
-  // TODO - Add all input state to device telemetry
-
   aurora_inputs.add(aurora_input);
+
+  // Init button
+  pinMode(pin, INPUT_PULLDOWN);
 }
 
 void aurora_send_activate() {
@@ -73,10 +73,23 @@ void aurora_send_activate() {
 
 void aurora_send_telemetry() {
   if(aurora_client.connected()) {
+    String state = String("");
+
+    for(int i = 0; i < aurora_inputs.size(); i++) {
+      AuroraInput input = aurora_inputs.get(i);
+
+      if(i != 0) {
+        state = state + ",";
+      }
+
+      state = state + "\"" + input.name + "\": " + input.value;
+      input.value;
+    }
+
     const String telemetry_payload =
       String("{\"topic\": \"device_telemetry\", \"payload\": {") +
         "\"device_id\":\"" + aurora_id + "\"," +
-        "\"input_state\": []" +
+        "\"input_state\": {" + state + "}" +
       "}}";
 
     aurora_client.print(telemetry_payload.c_str());
@@ -111,6 +124,14 @@ void aurora_check_connection() {
 void aurora_process() {
   LinkedList<String> * frame_buffer = aurora_neo_outputs.get(0).frame_buffer;
 
+  // Pull input states
+  for(int i = 0; i < aurora_inputs.size(); i++) {
+    AuroraInput input = aurora_inputs.get(i);
+
+    input.value = digitalRead(input.pin);
+  }
+
+  // Process data from server
   while(aurora_client.available()) {
     String line = aurora_client.readStringUntil(0);
     frame_buffer->add(line);
