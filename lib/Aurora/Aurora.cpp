@@ -83,7 +83,6 @@ void aurora_send_telemetry() {
       }
 
       state = state + "\"" + input.name + "\": " + input.value;
-      input.value;
     }
 
     const String telemetry_payload =
@@ -124,11 +123,25 @@ void aurora_check_connection() {
 void aurora_process() {
   LinkedList<String> * frame_buffer = aurora_neo_outputs.get(0).frame_buffer;
 
+  byte changed = 0;
+
   // Pull input states
   for(int i = 0; i < aurora_inputs.size(); i++) {
     AuroraInput input = aurora_inputs.get(i);
 
-    input.value = digitalRead(input.pin);
+    byte old_val = input.value;
+
+    input.value = digitalRead(input.pin) == LOW ? 0 : 1;
+
+    if(old_val != input.value) {
+      changed = 1;
+    }
+
+    aurora_inputs.set(i, input);
+  }
+
+  if(changed == 1) {
+    aurora_send_telemetry();
   }
 
   // Process data from server
@@ -171,10 +184,10 @@ int aurora_render(const char hardware_map[]) {
     else if(frame_buffer->size() < 5) drift_adjustment = 5;
     else drift_adjustment = 0;
 
-    Serial.print(frame_buffer->size());
-    Serial.print(" | ");
-    Serial.print(drift_adjustment);
-    Serial.println(" | Rendered");
+    //Serial.print(frame_buffer->size());
+    //Serial.print(" | ");
+    //Serial.print(drift_adjustment);
+    //Serial.println(" | Rendered");
 
     return drift_adjustment;
   }
