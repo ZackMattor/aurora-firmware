@@ -25,6 +25,7 @@ const char* password        = CLIENT_PASSPHRASE;
 const char* server_endpoint = SERVER_ENDPOINT;
 
 Timer *reconnect_timer = timer_create(15000);
+Timer *telemetry_timer = timer_create(5000);
 Timer *frame_render_timer = timer_create(1000 / 30);
 
 void wiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
@@ -58,6 +59,9 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   aurora_add_output_neo(GEOMETRY_WIDTH, NEOPIXEL_PIN, LED_META, geometry_name);
+  aurora_add_input_switch(33, String("right"));
+  aurora_add_input_switch(32, String("center"));
+  aurora_add_input_switch(25, String("left"));
   aurora_init(server_endpoint, String(WiFi.macAddress()));
 
   aurora_connect();
@@ -69,6 +73,10 @@ void loop() {
 
   if(timer_check(frame_render_timer)) {
     frame_render_timer->next_tick += aurora_render(hardware_map);
+  }
+
+  if(timer_check(telemetry_timer)) {
+    aurora_send_telemetry();
   }
 
   if(timer_check(reconnect_timer)) {

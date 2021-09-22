@@ -5,15 +5,26 @@ static String aurora_endpoint;
 static String aurora_id;
 static int drift_adjustment = 0;
 
-static struct NeoOutput {
+static struct AuroraNeoOutput {
   Adafruit_NeoPixel *led_strip;
   unsigned int frame_buffer_size;
   LinkedList<String> * frame_buffer;
   int geometry_width;
   String geometry_name;
-} neo_output;
+} aurora_neo_output;
 
-static LinkedList<NeoOutput> aurora_neo_outputs;
+// Inputs only support switches at the moment
+enum AuroraInputType { AuroraSwitch };
+
+static struct AuroraInput {
+  int pin;
+  String name;
+  enum AuroraInputType type;
+  byte value;
+} aurora_input;
+
+static LinkedList<AuroraNeoOutput> aurora_neo_outputs;
+static LinkedList<AuroraInput> aurora_inputs;
 
 void aurora_init(String endpoint, String id) {
   aurora_endpoint = endpoint;
@@ -21,7 +32,7 @@ void aurora_init(String endpoint, String id) {
 }
 
 void aurora_add_output_neo(int width, int pin, int led_meta, String geometry) {
-  NeoOutput neo_output;
+  AuroraNeoOutput neo_output;
 
   neo_output.led_strip = new Adafruit_NeoPixel(width, pin, led_meta);
   neo_output.frame_buffer_size = width * 3;
@@ -35,18 +46,54 @@ void aurora_add_output_neo(int width, int pin, int led_meta, String geometry) {
   aurora_neo_outputs.add(neo_output);
 }
 
-void aurora_sendTelemetry() {
+void aurora_add_input_switch(int pin, String name) {
+  AuroraInput aurora_input;
+
+  aurora_input.pin = pin;
+  aurora_input.name = name;
+  aurora_input.type = AuroraSwitch;
+
+  aurora_inputs.add(aurora_input);
+
+  // Init button
+  pinMode(pin, INPUT_PULLDOWN);
+}
+
+void aurora_send_activate() {
   if(aurora_client.connected()) {
+    const String activate_payload =
+      String("{\"topic\": \"device_activate\", \"payload\": {") +
+        "\"device_id\":\"" + aurora_id + "\"," +
+        "\"geometry\":\"" + aurora_neo_outputs.get(0).geometry_name + "\"" +
+      "}}";
+
+    aurora_client.print(activate_payload.c_str());
+  }
+}
+
+void aurora_send_telemetry() {
+  if(aurora_client.connected()) {
+    String state = String("");
+
+    for(int i = 0; i < aurora_inputs.size(); i++) {
+      AuroraInput input = aurora_inputs.get(i);
+
+      if(i != 0) {
+        state = state + ",";
+      }
+
+      state = state + "\"" + input.name + "\": " + input.value;
+    }
+
     const String telemetry_payload =
       String("{\"topic\": \"device_telemetry\", \"payload\": {") +
         "\"device_id\":\"" + aurora_id + "\"," +
-        "\"geometry\":\"" + aurora_neo_outputs.get(0).geometry_name + "\"" +
+        "\"input_state\": {" + state + "}" +
       "}}";
 
     aurora_client.print(telemetry_payload.c_str());
   }
 }
-
 
 void aurora_connect() {
   Serial.print("Attempting home hub connection...");
@@ -60,8 +107,8 @@ void aurora_connect() {
     return;
   }
 
-  aurora_sendTelemetry();
-  Serial.println("Telemetry sent!");
+  aurora_send_activate();
+  Serial.println("Activate sent!");
   Serial.println("Connection Successful");
 }
 
@@ -76,6 +123,28 @@ void aurora_check_connection() {
 void aurora_process() {
   LinkedList<String> * frame_buffer = aurora_neo_outputs.get(0).frame_buffer;
 
+  byte changed = 0;
+
+  // Pull input states
+  for(int i = 0; i < aurora_inputs.size(); i++) {
+    AuroraInput input = aurora_inputs.get(i);
+
+    byte old_val = input.value;
+
+    input.value = digitalRead(input.pin) == LOW ? 0 : 1;
+
+    if(old_val != input.value) {
+      changed = 1;
+    }
+
+    aurora_inputs.set(i, input);
+  }
+
+  if(changed == 1) {
+    aurora_send_telemetry();
+  }
+
+  // Process data from server
   while(aurora_client.available()) {
     String line = aurora_client.readStringUntil(0);
     frame_buffer->add(line);
@@ -86,7 +155,7 @@ void aurora_process() {
 
 int aurora_render(const char hardware_map[]) {
   // TODO - iterate over these
-  NeoOutput neo_output = aurora_neo_outputs.get(0);
+  AuroraNeoOutput neo_output = aurora_neo_outputs.get(0);
 
   Adafruit_NeoPixel *led_strip = neo_output.led_strip;
   unsigned int frame_buffer_size = neo_output.frame_buffer_size;
@@ -115,10 +184,10 @@ int aurora_render(const char hardware_map[]) {
     else if(frame_buffer->size() < 5) drift_adjustment = 5;
     else drift_adjustment = 0;
 
-    Serial.print(frame_buffer->size());
-    Serial.print(" | ");
-    Serial.print(drift_adjustment);
-    Serial.println(" | Rendered");
+    //Serial.print(frame_buffer->size());
+    //Serial.print(" | ");
+    //Serial.print(drift_adjustment);
+    //Serial.println(" | Rendered");
 
     return drift_adjustment;
   }
