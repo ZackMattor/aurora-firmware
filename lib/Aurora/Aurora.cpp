@@ -14,19 +14,20 @@ static struct AuroraNeoOutput {
 } aurora_neo_output;
 
 // Inputs only support switches at the moment
-enum AuroraInputType { AuroraSwitch };
+enum AuroraInputType { AuroraSwitch, AuroraAnalog };
 
 static struct AuroraInput {
   int pin;
   String name;
   enum AuroraInputType type;
-  byte value;
+  int value;
 } aurora_input;
 
 static LinkedList<AuroraNeoOutput> aurora_neo_outputs;
 static LinkedList<AuroraInput> aurora_inputs;
 
 void aurora_init(String endpoint, String id) {
+  analogReadResolution(10);
   aurora_endpoint = endpoint;
   aurora_id = id;
 }
@@ -55,8 +56,17 @@ void aurora_add_input_switch(int pin, String name) {
 
   aurora_inputs.add(aurora_input);
 
-  // Init button
   pinMode(pin, INPUT_PULLDOWN);
+}
+
+void aurora_add_input_analog(int pin, String name) {
+  AuroraInput aurora_input;
+
+  aurora_input.pin = pin;
+  aurora_input.name = name;
+  aurora_input.type = AuroraAnalog;
+
+  aurora_inputs.add(aurora_input);
 }
 
 void aurora_send_activate() {
@@ -131,10 +141,14 @@ void aurora_process() {
 
     byte old_val = input.value;
 
-    input.value = digitalRead(input.pin) == LOW ? 0 : 1;
+    if(input.type == AuroraSwitch) {
+      input.value = digitalRead(input.pin) == LOW ? 0 : 1;
 
-    if(old_val != input.value) {
-      changed = 1;
+      if(old_val != input.value) {
+        changed = 1;
+      }
+    } else if(input.type == AuroraAnalog) {
+      input.value = analogRead(input.pin);
     }
 
     aurora_inputs.set(i, input);

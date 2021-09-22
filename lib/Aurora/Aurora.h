@@ -19,5 +19,6 @@ int aurora_render(const char hardware_map[]);
 
 void aurora_add_output_neo(int width, int pin, int led_meta, String geometry);
 void aurora_add_input_switch(int pin, String name);
+void aurora_add_input_analog(int pin, String name);
 
 #endif

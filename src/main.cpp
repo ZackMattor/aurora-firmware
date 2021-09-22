@@ -59,9 +59,10 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   aurora_add_output_neo(GEOMETRY_WIDTH, NEOPIXEL_PIN, LED_META, geometry_name);
-  aurora_add_input_switch(33, String("right"));
-  aurora_add_input_switch(32, String("center"));
-  aurora_add_input_switch(25, String("left"));
+  aurora_add_input_switch(33, String("center"));
+  aurora_add_input_switch(32, String("left"));
+  aurora_add_input_switch(25, String("right"));
+  aurora_add_input_analog(34, String("pot"));
   aurora_init(server_endpoint, String(WiFi.macAddress()));
 
   aurora_connect();

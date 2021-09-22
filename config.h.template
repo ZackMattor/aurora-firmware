@@ -1,5 +1,7 @@
-#define IP_ADDRESS "10.0.0.177";
-#define SERIAL_DEV "/dev/ttyUSB2"
+#define GEOMETRY_SHARD 0
+#define GEOMETRY_ICOSAHEDRON 1
+#define GEOMETRY_GRID 2
+
 #define CLIENT_SSID "foobar"
 #define CLIENT_PASSPHRASE "BazTazzzzz"
 #define SERVER_ENDPOINT "10.0.0.192"
