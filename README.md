@@ -1,3 +1,5 @@
+OLD SNAPSHOT BEFORE LIBRARY REWORK
+
 # Aurora ESP Arduino SDK
 
 This is the firmware for the Aurora IOT lighting system.
