@@ -1,4 +1,4 @@
-# Aurora Firmware
+# Aurora ESP Arduino SDK
 
 This is the firmware for the Aurora IOT lighting system.
 
@@ -10,15 +10,13 @@ This is the firmware for the Aurora IOT lighting system.
 
 [Aurora App](https://github.com/ZackMattor/aurora-app-v2)
 
-## Depedencies
- - make
- - python3
-   - pio
-
 ## Getting Started
- - Clone this repo
- - For Debian or Ubuntu run `sudo make debian-install-dependencies` otherwise just install dependencies required
- - Copy `config.h.template` to `src/config.h` and adjust variables accordingly
- - Copy `variables.mk.template` to `variables.mk` and adjust variables accordingly
- - `make build-serial-monitor` to build and flash over the serial port and watch console output to make sure it connects to WiFi
- - After you have the firmware on the device you can run `make build-ip` to build and flash over IP
+ - Install Arduino IDE
+ - Add ESP boards to your board manager (Preferences -> Settings -> Additional Boards Manager URLs)
+
+```
+https://arduino.esp8266.com/stable/package_esp8266com_index.json
+https://dl.espressif.com/dl/package_esp32_index.json
+```
+
+ - Clone aurora-firmware into your Arduino Libraries folder
