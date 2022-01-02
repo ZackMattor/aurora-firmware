@@ -1,28 +1,32 @@
 #include <WiFi.h>
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include <LinkedList.h>
 #include <Aurora.h>
-#include "config.h"
-#include "ota_update.h"
-#include "utils/timer.h"
+#include <AuroraTimer.h>
+//#include "ota_update.h"
 
-#if GEOMETRY_TYPE == GEOMETRY_SHARD
-#include "geometry/shard.h"
-#endif
+/** DEFINE THE GEOMETRY **/
+/*************************/
+#define LED_META (NEO_GRB + NEO_KHZ800)
+#define NEOPIXEL_PIN 12
+#define GEOMETRY_WIDTH 6
 
-#if GEOMETRY_TYPE == GEOMETRY_ICOSAHEDRON
-#include "geometry/icosahedron.h"
-#endif
+const String geometry_name = "shard";
 
-#if GEOMETRY_TYPE == GEOMETRY_GRID
-#include "geometry/grid.h"
-#endif
+static const char hardware_map[7] = {
+  0,
+  1,
+  2,
+  3,
+  4,
+  5
+};
+/*************************/
 
 // WiFi/Network Settings
-const char* ssid            = CLIENT_SSID;
-const char* password        = CLIENT_PASSPHRASE;
-const char* server_endpoint = SERVER_ENDPOINT;
+const char* ssid            = "My SSID";
+const char* password        = "My SSID Password";
+const char* server_endpoint = "10.0.0.20";
 
 Timer *reconnect_timer = timer_create(15000);
 Timer *telemetry_timer = timer_create(5000);
@@ -46,7 +50,7 @@ void setup() {
   WiFi.onEvent(wiFiStationDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
   WiFi.begin(ssid, password);
 
-  ota_setup();
+  //ota_setup();
 
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection to WiFi failed! Rebooting...");

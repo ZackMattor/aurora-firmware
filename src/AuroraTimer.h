@@ -1,5 +1,5 @@
-#ifndef _TIMER_H_
-#define _TIMER_H_
+#ifndef _AURORA_TIMER_H_
+#define _AURORA_TIMER_H_
 
 long timer_current_time = 0;
 
