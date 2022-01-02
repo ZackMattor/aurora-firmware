@@ -1,9 +1,0 @@
-#define GEOMETRY_SHARD 0
-#define GEOMETRY_ICOSAHEDRON 1
-#define GEOMETRY_GRID 2
-
-#define CLIENT_SSID "foobar"
-#define CLIENT_PASSPHRASE "BazTazzzzz"
-#define SERVER_ENDPOINT "10.0.0.192"
-#define NEOPIXEL_PIN 15
-#define GEOMETRY_TYPE "icosahedron"

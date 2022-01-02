@@ -20,3 +20,7 @@ https://dl.espressif.com/dl/package_esp32_index.json
 ```
 
  - Clone aurora-firmware into your Arduino Libraries folder
+
+## Resources
+
+ - https://arduino.github.io/arduino-cli/0.20/library-specification/#layout-of-folders-and-files
